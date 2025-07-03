@@ -1,0 +1,13 @@
+services:
+  tell_me_truth:
+    build: .
+    container_name: tell_me_truth
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - ./cookies.txt:/app/cookies.txt:ro
+      - ./tell_me_truth.log:/app/tell_me_truth.log
+      - ./tell_me_truth.lock:/app/tell_me_truth.lock
+

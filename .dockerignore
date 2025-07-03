@@ -1,0 +1,10 @@
+dl*
+downloads/
+*.db
+*.log
+*.lock
+__pycache__/
+venv/
+.git/
+*.pyc
+

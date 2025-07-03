@@ -1,0 +1,7 @@
+yt-dlp
+openai>=0.27.0
+openai-whisper>=1.4.1
+torch
+python-dotenv>=1.0.0
+browser-cookie3>=0.18.3
+
