@@ -51,6 +51,7 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
                 - In Google Cloud Console, enable the Gmail API and create an OAuth client ID (Desktop).
                 - Download the credentials JSON and save it as `credentials.json` in the project directory.
                 - Run `gmailtail --credentials credentials.json --token token.json --setup` and follow the browser flow.
+                - Keep both `credentials.json` and `token.json` in this folder so Docker can mount them.
 
         3. **Log into YouTube in Firefox (with the account you want to use).**
                 - Make sure you can play the restricted/private videos in your browser.
@@ -161,9 +162,9 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
 
 ## Project Structure
 
-	downloads/                          # Media and transcripts
-	email_video_runner.py               # IMAP fetch + media downloader
-	transcribe_downloaded_videos.py     # Whisper transcription
+        downloads/                          # Media and transcripts
+        email_video_runner.py               # Gmail fetch via gmailtail + media downloader
+        transcribe_downloaded_videos.py     # Whisper transcription
 	run_pipeline.sh                     # Master pipeline script
 	dump_firefox_cookies.py             # Generate cookies.txt from Firefox
 	requirements.txt                    # Python dependencies
