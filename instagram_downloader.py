@@ -5,13 +5,18 @@ import requests
 import time
 import random
 import logging
-import sqlite3
 import os
 import re
 from pathlib import Path
 from urllib.parse import urlencode
 
-DB_PATH = "downloads.db"
+from utils import (
+    DB_PATH,
+    initialize_database,
+    is_url_downloaded,
+    record_successful_download,
+    safe_filename,
+)
 
 # Configure top-level logging
 logging.basicConfig(
@@ -23,68 +28,12 @@ logging.basicConfig(
 ###############################################################################
 #                              DB FUNCTIONS                                   #
 ###############################################################################
-def initialize_database(db_path: str = DB_PATH):
-    """Initialize the SQLite database to store successfully downloaded URLs."""
-    logging.debug("[DEBUG] Initializing SQLite database.")
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS downloads (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            url TEXT UNIQUE NOT NULL,
-            title TEXT NOT NULL,
-            downloaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    conn.close()
-    logging.debug("[DEBUG] SQLite database initialized.")
-
-
-def is_url_downloaded(url: str, db_path: str = DB_PATH) -> bool:
-    """
-    Check if a URL has already been downloaded (URL is unique).
-    """
-    logging.debug(f"[DEBUG] Checking if URL is already downloaded: {url}")
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("SELECT 1 FROM downloads WHERE url = ?", (url,))
-    result = cursor.fetchone()
-    conn.close()
-    return result is not None
-
-
-def record_successful_download(url: str, title: str, db_path: str = DB_PATH):
-    """
-    Record a successfully downloaded URL in the database.
-    """
-    logging.debug(f"[DEBUG] Recording successful download: URL={url}, Title={title}")
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("INSERT OR IGNORE INTO downloads (url, title) VALUES (?, ?)", (url, title))
-    conn.commit()
-    conn.close()
+# Provided by utils module
 
 ###############################################################################
 #                           FILENAME UTILITIES                                #
 ###############################################################################
-def safe_filename(input_str: str, max_length: int = 150) -> str:
-    """
-    Convert `input_str` into a filesystem-safe string:
-    - Trim to max_length characters
-    - Remove or replace characters invalid on most filesystems
-    - Return the sanitized string (does not include extension)
-    """
-    # Basic sanitation to remove path separators and forbidden chars
-    sanitized = re.sub(r'[\\/*?:"<>|]', '_', input_str.strip())
-    # Also remove leading/trailing dots or spaces
-    sanitized = sanitized.strip('. ').strip()
-    # Enforce length limit
-    sanitized = sanitized[:max_length]
-    # If string is empty or only invalid chars, use a fallback
-    if not sanitized:
-        sanitized = "untitled"
-    return sanitized
+# Provided by utils module
 
 
 def get_unique_filepath(directory: str, base_name: str, extension: str = ".mp4") -> str:

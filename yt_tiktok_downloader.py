@@ -5,47 +5,17 @@ import os
 import random
 import time
 import logging
-import sqlite3
 import re
 
-DB_PATH = "downloads.db"
+from utils import (
+    DB_PATH,
+    initialize_database,
+    is_url_downloaded,
+    record_successful_download,
+    safe_filename,
+)
 
-def safe_filename(input_str: str, max_length: int = 150) -> str:
-    sanitized = re.sub(r'[\\/*?:"<>|]', '_', input_str.strip())
-    sanitized = sanitized.strip('. ').strip()
-    sanitized = sanitized[:max_length]
-    if not sanitized:
-        sanitized = "untitled"
-    return sanitized
-
-def initialize_database(db_path: str = DB_PATH):
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS downloads (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            url TEXT UNIQUE NOT NULL,
-            title TEXT NOT NULL,
-            downloaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    conn.close()
-
-def is_url_downloaded(url: str, db_path: str = DB_PATH) -> bool:
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("SELECT 1 FROM downloads WHERE url = ?", (url,))
-    result = cursor.fetchone()
-    conn.close()
-    return result is not None
-
-def record_successful_download(url: str, title: str, db_path: str = DB_PATH):
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("INSERT OR IGNORE INTO downloads (url, title) VALUES (?, ?)", (url, title))
-    conn.commit()
-    conn.close()
+# Provided by utils module
 
 def download_video_yt_tiktok(
     url: str,
