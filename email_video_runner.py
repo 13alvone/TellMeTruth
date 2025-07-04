@@ -2,19 +2,18 @@
 """
 email_video_runner.py
 
-Connects to Gmail via IMAP, fetches messages, extracts URLs, and downloads videos using yt-dlp
-with retry, cookie support, and IMAP reconnection.
+Fetches Gmail messages using gmailtail, extracts URLs, and downloads videos using yt-dlp
+with retry and cookie support.
 """
 import argparse
-import imaplib
-import email
+from gmailtail.config import Config
+from gmailtail.gmailtail import GmailTail, OutputFormatter
 import sys
 import logging
 import time
 import os
 import re
 import random
-from email.utils import parseaddr
 
 import yt_dlp
 
@@ -27,8 +26,6 @@ from utils import (
 )
 
 # ---------------------- Constants ----------------------
-MAX_IMAP_RETRIES = int(os.environ.get("MAX_IMAP_RETRIES", "3"))
-IMAP_RETRY_DELAY = float(os.environ.get("IMAP_RETRY_DELAY", "1.0"))
 YTDLP_COOKIES_FILE = os.environ.get("YTDLP_COOKIES_FILE")
 FACTCHECK_KEYWORD = "factcheck"
 FACTCHECK_RESPONSE_PREFIX = "[FACTCHECK - RESPONSE] - "  # New for loop prevention
@@ -39,20 +36,7 @@ FACTCHECK_RESPONSE_PREFIX = "[FACTCHECK - RESPONSE] - "  # New for loop preventi
 # ---------------------- Filename Utility ----------------------
 # Provided by utils module
 
-# ---------------------- IMAP Reconnection ----------------------
-def reconnect_imap(imap_srv, email_addr: str, passwd: str, mailbox: str):
-    """Re-establish IMAP connection and select mailbox."""
-    try:
-        if imap_srv:
-            imap_srv.logout()
-    except Exception:
-        pass
-    srv = imaplib.IMAP4_SSL("imap.gmail.com")
-    srv.login(email_addr, passwd)
-    srv.select(mailbox)
-    logging.info("[i] Reconnected to IMAP server and selected mailbox '%s'", mailbox)
-    print(f"[i] Reconnected to IMAP server and selected mailbox '{mailbox}'")
-    return srv
+
 
 # ---------------------- Download with yt-dlp ----------------------
 
@@ -108,101 +92,62 @@ def download_with_ytdlp(
 # ---------------------- Message Processing ----------------------
 
 def process_messages(
-    imap_srv,
-    msg_ids,
+    messages,
     approved_senders,
     url_logfile,
     db_path,
     retries,
-    email_addr,
-    passwd,
-    mailbox
 ):
+    """Process a list of message dictionaries returned by gmailtail."""
     factcheck_dirs = []
 
-    for msg_id in msg_ids:
-        msg_id_str = msg_id.decode('utf-8', errors='ignore')
-        logging.info(f"[i] Processing msg ID: {msg_id_str}")
-        print(f"[i] Processing msg ID: {msg_id_str}")
-        # Fetch with retry on IMAP abort
-        for attempt in range(1, MAX_IMAP_RETRIES + 1):
-            try:
-                rv, msg_data = imap_srv.fetch(msg_id, '(RFC822)')
-                break
-            except imaplib.IMAP4.abort as e:
-                logging.warning(f"[!] IMAP abort on fetch {msg_id_str} (attempt {attempt}): {e}")
-                print(f"[!] IMAP abort on fetch {msg_id_str} (attempt {attempt}): {e}")
-                imap_srv = reconnect_imap(imap_srv, email_addr, passwd, mailbox)
-                time.sleep(IMAP_RETRY_DELAY)
-        else:
-            logging.error(f"[x] Failed to fetch msg {msg_id_str} after {MAX_IMAP_RETRIES} retries—skipping")
-            print(f"[x] Failed to fetch msg {msg_id_str} after {MAX_IMAP_RETRIES} retries—skipping")
+    for message in messages:
+        sender = (message.get('from', {}).get('email') or '').lower()
+        if approved_senders and sender not in approved_senders:
+            msg = f"[i] Skipping email from {sender}; not approved."
+            logging.info(msg)
+            print(msg)
             continue
 
-        if rv != 'OK':
-            logging.warning(f"[!] Could not fetch message {msg_id_str}")
-            print(f"[!] Could not fetch message {msg_id_str}")
+        subject = (message.get('subject') or 'NoSubject').strip()
+        if subject.lower().startswith(FACTCHECK_RESPONSE_PREFIX.lower()):
+            msg = f"[i] Skipping response email with subject: {subject}"
+            logging.info(msg)
+            print(msg)
             continue
 
-        for part in msg_data:
-            if isinstance(part, tuple):
-                message = email.message_from_bytes(part[1])
-                sender = parseaddr(message.get('From', ''))[1].lower()
-                if sender not in approved_senders:
-                    msg = f"[i] Skipping email from {sender}; not approved."
+        is_factcheck = FACTCHECK_KEYWORD.lower() in subject.lower()
+
+        body_text = message.get('body', '') or message.get('snippet', '')
+        urls = re.findall(r'https?://\S+', body_text)
+        with open(url_logfile, 'a', encoding='utf-8') as f_out:
+            for url in urls:
+                f_out.write(url + '\n')
+        if not urls:
+            msg = "[i] No URLs found in message."
+            logging.info(msg)
+            print(msg)
+            continue
+
+        for url in urls:
+            output_dir = os.path.join('downloads', safe_filename(subject, 100))
+            msg = f"[i] Downloading URL: {url} to {output_dir}"
+            logging.info(msg)
+            print(msg)
+            success = download_with_ytdlp(url, output_dir, subject, retries, db_path)
+            if success:
+                msg = f"[i] Download succeeded for {url}"
+                logging.info(msg)
+                print(msg)
+                if is_factcheck and output_dir not in factcheck_dirs:
+                    factcheck_dirs.append(output_dir)
+                    msg = f"[FACTCHECK] Marked for transcription: {output_dir}"
                     logging.info(msg)
                     print(msg)
-                    continue
-
-                subject = message.get('Subject', 'NoSubject').strip()
-                if subject.lower().startswith(FACTCHECK_RESPONSE_PREFIX.lower()):
-                    msg = f"[i] Skipping response email with subject: {subject}"
-                    logging.info(msg)
-                    print(msg)
-                    continue
-
-                is_factcheck = FACTCHECK_KEYWORD.lower() in subject.lower()
-
-                body_text = ''
-                if message.is_multipart():
-                    for p in message.walk():
-                        if p.get_content_type() == 'text/plain':
-                            payload = p.get_payload(decode=True)
-                            if payload:
-                                body_text += payload.decode('utf-8', errors='ignore') + '\n'
-                else:
-                    payload = message.get_payload(decode=True)
-                    body_text = payload.decode('utf-8', errors='ignore') if payload else ''
-
-                urls = re.findall(r'https?://\S+', body_text)
-                with open(url_logfile, 'a', encoding='utf-8') as f_out:
-                    for url in urls:
-                        f_out.write(url + '\n')
-                if not urls:
-                    msg = "[i] No URLs found in message."
-                    logging.info(msg)
-                    print(msg)
-                    continue
-
-                for url in urls:
-                    output_dir = os.path.join('downloads', safe_filename(subject, 100))
-                    msg = f"[i] Downloading URL: {url} to {output_dir}"
-                    logging.info(msg)
-                    print(msg)
-                    success = download_with_ytdlp(url, output_dir, subject, retries, db_path)
-                    if success:
-                        msg = f"[i] Download succeeded for {url}"
-                        logging.info(msg)
-                        print(msg)
-                        if is_factcheck and output_dir not in factcheck_dirs:
-                            factcheck_dirs.append(output_dir)
-                            msg = f"[FACTCHECK] Marked for transcription: {output_dir}"
-                            logging.info(msg)
-                            print(msg)
-                    else:
-                        msg = f"[x] Download failed for {url}"
-                        logging.error(msg)
-                        print(msg)
+            else:
+                msg = f"[x] Download failed for {url}"
+                logging.error(msg)
+                print(msg)
 
     if factcheck_dirs:
         with open('factcheck_dirs_for_transcription.txt', 'w', encoding='utf-8') as f:
@@ -218,9 +163,7 @@ def parse_arguments():
         description="Fetch Gmail messages and download video URLs"
     )
     parser.add_argument('gmail_email', nargs='?', help='Gmail address')
-    parser.add_argument('gmail_passwd', nargs='?', help='Gmail app password')
     parser.add_argument('--approved_sender', action='append', help='Approved sender(s)')
-    parser.add_argument('--mailbox', default='INBOX', help='Mailbox to select')
     parser.add_argument('--url_logfile', default='extracted_urls.txt', help='File to log URLs')
     parser.add_argument('--db_path', default=DB_PATH, help='SQLite DB path')
     parser.add_argument('--retries', type=int, default=3, help='Download retries')
@@ -230,9 +173,6 @@ def parse_arguments():
     # Env fallback
     if not args.gmail_email:
         args.gmail_email = os.environ.get('GMAIL_EMAIL')
-    if not args.gmail_passwd:
-        # Gmail App password via env var GMAIL_PASSWD
-        args.gmail_passwd = os.environ.get('GMAIL_PASSWD')
 
     # Restore GMAIL_DESIRED_SENDERS logic:
     env_senders = os.environ.get('GMAIL_DESIRED_SENDERS')
@@ -246,9 +186,9 @@ def parse_arguments():
         # Already present via CLI, normalize
         args.approved_sender = [s.lower() for s in args.approved_sender]
 
-    if not args.gmail_email or not args.gmail_passwd:
-        logging.error("[x] Must provide Gmail credentials via CLI or env vars.")
-        print("[x] Must provide Gmail credentials via CLI or env vars.")
+    if not args.gmail_email:
+        logging.error("[x] Must provide Gmail email via CLI or env vars.")
+        print("[x] Must provide Gmail email via CLI or env vars.")
         sys.exit(1)
     return args
 
@@ -262,41 +202,41 @@ def configure_logging(enable_debug=False):
     )
 
 
-def connect_to_gmail(email_addr, passwd, mailbox):
-    try:
-        logging.info("[i] Connecting to IMAP server...")
-        print("[i] Connecting to IMAP server...")
-        srv = imaplib.IMAP4_SSL('imap.gmail.com')
-        ret, _ = srv.login(email_addr, passwd)
-        if ret == 'OK':
-            logging.info(f"[i] Logged in as {email_addr}")
-            print(f"[i] Logged in as {email_addr}")
-        else:
-            logging.error(f"[x] IMAP login returned: {ret}")
-            print(f"[x] IMAP login returned: {ret}")
-            return None
-        ret, _ = srv.select(mailbox)
-        if ret != 'OK':
-            logging.error(f"[x] Unable to open mailbox {mailbox}")
-            print(f"[x] Unable to open mailbox {mailbox}")
-            return None
-        return srv
-    except imaplib.IMAP4.error as e:
-        logging.error(f"[x] IMAP error: {e}")
-        print(f"[x] IMAP error: {e}")
-        return None
-
-
-def fetch_last_msgs(imap_srv):
-    ret, data = imap_srv.search(None, 'ALL')
-    if ret != 'OK':
-        logging.error("[x] IMAP search failed.")
-        print("[x] IMAP search failed.")
+def fetch_last_msgs(approved_senders):
+    """Fetch messages using gmailtail and return them as a list of dicts."""
+    credentials = os.environ.get('GMAILTAIL_CREDENTIALS')
+    token = os.environ.get('GMAILTAIL_TOKEN')
+    if not credentials:
+        logging.error('[x] GMAILTAIL_CREDENTIALS environment variable is required')
+        print('[x] GMAILTAIL_CREDENTIALS environment variable is required')
         return []
-    ids = data[0].split()
-    logging.info(f"[i] Found {len(ids)} messages in mailbox")
-    print(f"[i] Found {len(ids)} messages in mailbox")
-    return sorted(ids)
+
+    config = Config()
+    config.auth.credentials = credentials
+    if token:
+        config.auth.cached_auth_token = token
+
+    if approved_senders:
+        query = ' OR '.join(f'from:{s}' for s in approved_senders)
+        config.filters.query = query
+
+    config.output.format = 'json-lines'
+    config.output.include_body = True
+    config.monitoring.once = True
+
+    class Collector(OutputFormatter):
+        def __init__(self, cfg):
+            super().__init__(cfg)
+            self.messages = []
+
+        def output_message(self, message):
+            self.messages.append(message)
+
+    collector = Collector(config)
+    tail = GmailTail(config)
+    tail.formatter = collector
+    tail.run()
+    return collector.messages
 
 
 def main():
@@ -305,35 +245,20 @@ def main():
     initialize_database(args.db_path)
 
     start = time.time()
-    imap_srv = connect_to_gmail(args.gmail_email, args.gmail_passwd, args.mailbox)
-    if not imap_srv:
-        sys.exit(1)
-
-    msg_ids = fetch_last_msgs(imap_srv)
-    if not msg_ids:
+    messages = fetch_last_msgs(args.approved_sender)
+    if not messages:
         logging.info("[i] No messages to process. Exiting.")
         print("[i] No messages to process. Exiting.")
-        imap_srv.logout()
         sys.exit(0)
 
     process_messages(
-        imap_srv,
-        msg_ids,
+        messages,
         args.approved_sender,
         args.url_logfile,
         args.db_path,
         args.retries,
-        args.gmail_email,
-        args.gmail_passwd,
-        args.mailbox
     )
 
-    try:
-        imap_srv.close()
-    except Exception as e:
-        logging.debug(f"[DEBUG] imap close error: {e}")
-        print(f"[DEBUG] imap close error: {e}")
-    imap_srv.logout()
 
     elapsed = time.time() - start
     mins, secs = divmod(int(elapsed), 60)
