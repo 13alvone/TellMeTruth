@@ -10,7 +10,7 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
 - Supports private or age-restricted videos using a `cookies.txt` (exported from your Firefox session).
 - Transcribes audio using OpenAI Whisper.
 - Fact-checks transcripts using ChatGPT.
-- Fully automated with a master script (`run_pipeline.sh`) or Docker for reliability.
+- Fully automated with a master script (`run_all_pipeline.sh`) or Docker for reliability.
 - Minimal setup friction—just plug in your credentials, generate cookies, and go!
 
 ## Prerequisites
@@ -147,7 +147,7 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
 ### Automated Pipeline
 
 	Run everything on a loop (no cron needed):  
-		./run_pipeline.sh
+		./run_all_pipeline.sh
 
 ### One-Off Run via tmux
 
@@ -168,7 +168,7 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
         downloads/                          # Media and transcripts
         email_video_runner.py               # Gmail fetch via gmailtail + media downloader
         transcribe_downloaded_videos.py     # Whisper transcription
-	run_pipeline.sh                     # Master pipeline script
+	run_all_pipeline.sh                     # Master pipeline script
 	dump_firefox_cookies.py             # Generate cookies.txt from Firefox
 	requirements.txt                    # Python dependencies
 	Dockerfile                          # Container build instructions
