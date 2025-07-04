@@ -138,6 +138,14 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
 	downloads.db                        # SQLite tracking DB
 	venv/                               # Python virtual environment
 
+## Running Tests
+
+The project uses `pytest` for its unit tests. Install dependencies and run:
+
+    pip install -r requirements.txt
+    pytest
+
+
 ---
 
 ## Troubleshooting
