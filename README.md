@@ -18,7 +18,7 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
 - Ubuntu Server 22+ (or macOS/Linux for development).
 - Python 3.10+ (for local/manual mode).
 - `ffmpeg` installed (needed by `yt-dlp` and Whisper).
-- Gmail App Password for IMAP access.
+- Gmail App Password for IMAP access (set as `GMAIL_PASSWD`).
 - Docker & Docker Compose recommended for reproducible environment.
 - Must be logged in to YouTube with Firefox for cookies export (see below).
 
@@ -46,7 +46,7 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
 		# Required in .env:
 		GMAIL_EMAIL=your@gmail.com
 		GMAIL_PASSWD=your_app_password
-		GMAIL_DESIRED_SENDERS=cspeakesinfo@gmail.com,thecspeakes@icloud.com
+                GMAIL_DESIRED_SENDERS=trusted1@example.com,trusted2@icloud.com
 		YTDLP_COOKIES_FILE=/app/cookies.txt
 
 	5. **Build and start the Docker service:**
@@ -90,7 +90,7 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
 
 		GMAIL_EMAIL=your@gmail.com
 		GMAIL_PASSWD=your_app_password
-		GMAIL_DESIRED_SENDERS=cspeakesinfo@gmail.com,thecspeakes@icloud.com
+                GMAIL_DESIRED_SENDERS=trusted1@example.com,trusted2@icloud.com
 		YTDLP_COOKIES_FILE=/app/cookies.txt
 		INTERVAL=3600
 		MAX_IMAP_RETRIES=3
