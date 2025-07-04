@@ -7,3 +7,5 @@ browser-cookie3>=0.18.3
 
 
 pytest>=8.0.0
+
+git+https://github.com/c4pt0r/gmailtail.git#egg=gmailtail
