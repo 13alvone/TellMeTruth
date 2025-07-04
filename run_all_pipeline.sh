@@ -44,7 +44,7 @@ fi
 while true; do
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] ==== Starting pipeline cycle ==== " | tee -a "$LOG_FILE"
     # Step 1: Fetch emails and download videos
-    if python3 "$SCRIPT_DIR/email_video_runner.py" >> "$LOG_FILE" 2>&1; then
+    if python3 "$SCRIPT_DIR/gmailtail_video_runner.py" >> "$LOG_FILE" 2>&1; then
         echo "[i] Video download stage completed successfully." | tee -a "$LOG_FILE"
     else
         echo "[x] Video download stage failed." | tee -a "$LOG_FILE"
