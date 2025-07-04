@@ -262,6 +262,7 @@ def parse_arguments():
     if not args.gmail_email:
         args.gmail_email = os.environ.get('GMAIL_EMAIL')
     if not args.gmail_passwd:
+        # Gmail App password via env var GMAIL_PASSWD
         args.gmail_passwd = os.environ.get('GMAIL_PASSWD')
 
     # Restore GMAIL_DESIRED_SENDERS logic:
@@ -271,7 +272,7 @@ def parse_arguments():
         args.approved_sender = [s.strip().lower() for s in re.split(r'[;,]', env_senders) if s.strip()]
     elif not args.approved_sender:
         # Fallback if nothing set anywhere
-        args.approved_sender = ['cspeakesinfo@gmail.com']
+        args.approved_sender = []
     else:
         # Already present via CLI, normalize
         args.approved_sender = [s.lower() for s in args.approved_sender]

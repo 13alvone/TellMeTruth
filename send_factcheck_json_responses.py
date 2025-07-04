@@ -74,6 +74,7 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
     sender = get_env_var("GMAIL_EMAIL", required=True)
+    # Gmail App password stored in GMAIL_PASSWD
     password = get_env_var("GMAIL_PASSWD", required=True)
 
     fact_dirs = load_factcheck_dirs(args.list_path)
