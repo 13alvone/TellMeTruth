@@ -71,10 +71,11 @@ def safe_filename(input_str: str, max_length: int = 150) -> str:
     return sanitized or "untitled"
 
 # ---------------------- IMAP Reconnection ----------------------
-def reconnect_imap(email_addr: str, passwd: str, mailbox: str):
+def reconnect_imap(imap_srv, email_addr: str, passwd: str, mailbox: str):
     """Re-establish IMAP connection and select mailbox."""
     try:
-        server.logout()
+        if imap_srv:
+            imap_srv.logout()
     except Exception:
         pass
     srv = imaplib.IMAP4_SSL("imap.gmail.com")
@@ -162,7 +163,7 @@ def process_messages(
             except imaplib.IMAP4.abort as e:
                 logging.warning(f"[!] IMAP abort on fetch {msg_id_str} (attempt {attempt}): {e}")
                 print(f"[!] IMAP abort on fetch {msg_id_str} (attempt {attempt}): {e}")
-                imap_srv = reconnect_imap(email_addr, passwd, mailbox)
+                imap_srv = reconnect_imap(imap_srv, email_addr, passwd, mailbox)
                 time.sleep(IMAP_RETRY_DELAY)
         else:
             logging.error(f"[x] Failed to fetch msg {msg_id_str} after {MAX_IMAP_RETRIES} retries—skipping")
