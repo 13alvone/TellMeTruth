@@ -18,7 +18,7 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
 - Ubuntu Server 22+ (or macOS/Linux for development).
 - Python 3.10+ (for local/manual mode).
 - `ffmpeg` installed (needed by `yt-dlp` and Whisper).
-- Gmail App Password for IMAP access (set as `GMAIL_PASSWD`).
+- Gmail OAuth2 credentials JSON (`GMAILTAIL_CREDENTIALS`) and token file (`GMAILTAIL_TOKEN`).
 - Docker & Docker Compose recommended for reproducible environment.
 - Must be logged in to YouTube with Firefox for cookies export (see below).
 
@@ -50,10 +50,11 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
 		vim .env    # or use nano, code, etc.
 
 		# Required in .env:
-		GMAIL_EMAIL=your@gmail.com
-		GMAIL_PASSWD=your_app_password
+                GMAIL_EMAIL=your@gmail.com
+                GMAILTAIL_CREDENTIALS=/app/credentials.json
+                GMAILTAIL_TOKEN=/app/token.json
                 GMAIL_DESIRED_SENDERS=trusted1@example.com,trusted2@icloud.com
-		YTDLP_COOKIES_FILE=/app/cookies.txt
+                YTDLP_COOKIES_FILE=/app/cookies.txt
 
 	5. **Build and start the Docker service:**
 		sudo docker-compose up -d --build
@@ -75,10 +76,11 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
 
 	4. Generate cookies as described above and place them in ./cookies.txt.
 
-	5. Export environment variables:
-		export GMAIL_EMAIL=your@gmail.com
-		export GMAIL_PASSWD=your_app_password
-		export YTDLP_COOKIES_FILE=$(pwd)/cookies.txt
+        5. Export environment variables:
+                export GMAIL_EMAIL=your@gmail.com
+                export GMAILTAIL_CREDENTIALS=$(pwd)/credentials.json
+                export GMAILTAIL_TOKEN=$(pwd)/token.json
+                export YTDLP_COOKIES_FILE=$(pwd)/cookies.txt
 
         6. Run the pipeline scripts:
                 python3 email_video_runner.py
@@ -94,15 +96,14 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
 - You **must** have a valid `cookies.txt` in your project root for restricted video downloads.
 - To change polling interval (in seconds), set `INTERVAL` in `.env`.
 
-	Example .env:
+        Example .env:
 
-		GMAIL_EMAIL=your@gmail.com
-		GMAIL_PASSWD=your_app_password
+                GMAIL_EMAIL=your@gmail.com
+                GMAILTAIL_CREDENTIALS=/app/credentials.json
+                GMAILTAIL_TOKEN=/app/token.json
                 GMAIL_DESIRED_SENDERS=trusted1@example.com,trusted2@icloud.com
-		YTDLP_COOKIES_FILE=/app/cookies.txt
-		INTERVAL=3600
-		MAX_IMAP_RETRIES=3
-		IMAP_RETRY_DELAY=1.0
+                YTDLP_COOKIES_FILE=/app/cookies.txt
+                INTERVAL=3600
 
 ---
 
@@ -163,7 +164,7 @@ The project uses `pytest` for its unit tests. Install dependencies and run:
 
 ## Troubleshooting
 
-- **IMAP errors:** Verify your `GMAIL_EMAIL` & `GMAIL_PASSWD` in `.env`, and that IMAP is enabled on your Gmail account.
+- **OAuth errors:** Verify your `GMAIL_EMAIL`, `GMAILTAIL_CREDENTIALS`, and `GMAILTAIL_TOKEN` paths in `.env`.
 - **Download failures:** Ensure `YTDLP_COOKIES_FILE` exists and is readable by the container or Python script.
 - **Permission issues:** Check file ownership/permissions on `downloads.db`, `downloads/`, and `cookies.txt`.
 - **Docker issues:** Confirm volumes, `.env`, and file paths are correct. Run with `sudo` if needed.
