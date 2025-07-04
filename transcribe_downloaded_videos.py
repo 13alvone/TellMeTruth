@@ -80,7 +80,7 @@ def load_factcheck_dirs(list_path="factcheck_dirs_for_transcription.txt"):
         logging.warning(f"[!] No directories listed in {list_path}.")
     return dirs
 
-def main(downloads_dir="downloads", model_size="base"):
+def main(model_size="base"):
     check_prerequisites()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
@@ -111,8 +111,7 @@ def main(downloads_dir="downloads", model_size="base"):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Transcribe factcheck videos using Whisper.")
-    parser.add_argument("--downloads_dir", default="downloads", help="(ignored) Directory to search for videos.")
     parser.add_argument("--model_size", default="base", help="Whisper model size: tiny, base, small, medium, large")
     args = parser.parse_args()
-    main(args.downloads_dir, args.model_size)
+    main(args.model_size)
 
