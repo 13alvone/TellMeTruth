@@ -24,6 +24,12 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
 
 ---
 
+## Ethical Use & Privacy
+
+- This project is intended for educational and lawful purposes. Only process content you have the right to access and share.
+- Downloads and transcripts may include personal data. Handle all files responsibly and remove them when no longer needed.
+- Keep your Gmail credentials and the `cookies.txt` export private. Do not commit them to version control; `.gitignore` already excludes `.env` and `cookies.txt`.
+
 ## Quick Start: Dockerized Setup (Recommended)
 
 	1. **Clone this repository:**
@@ -115,6 +121,13 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
 
 	Run everything on a loop (no cron needed):  
 		./run_pipeline.sh
+
+### One-Off Run via tmux
+
+        Start a single pipeline cycle in a detached tmux session:
+                ./tmux_run_once.sh [session_name]
+        Then attach with:
+                tmux attach -t [session_name]
 
 ### Docker Deployment
 
