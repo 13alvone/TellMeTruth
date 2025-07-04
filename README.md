@@ -74,9 +74,11 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
 		export GMAIL_PASSWD=your_app_password
 		export YTDLP_COOKIES_FILE=$(pwd)/cookies.txt
 
-	6. Run the pipeline scripts:
-		python3 email_video_runner.py
-		python3 transcribe_downloaded_videos.py
+        6. Run the pipeline scripts:
+                python3 email_video_runner.py
+                python3 transcribe_downloaded_videos.py
+            # The transcriber automatically processes directories listed in
+            # `factcheck_dirs_for_transcription.txt` created by the downloader.
 
 ---
 
@@ -105,8 +107,9 @@ A robust, end-to-end pipeline to fetch video links from email, download media, t
 	Run downloader:  
 		python3 email_video_runner.py
 
-	Run transcriber:  
-		python3 transcribe_downloaded_videos.py
+        Run transcriber:
+                python3 transcribe_downloaded_videos.py
+        # Uses directories listed in `factcheck_dirs_for_transcription.txt`.
 
 ### Automated Pipeline
 
