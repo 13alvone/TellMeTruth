@@ -8,6 +8,8 @@ services:
     volumes:
       - ./:/app
       - ./cookies.txt:/app/cookies.txt:ro
+      - ./credentials.json:/app/credentials.json:ro
+      - ./token.json:/app/token.json:ro
       - ./tell_me_truth.log:/app/tell_me_truth.log
       - ./tell_me_truth.lock:/app/tell_me_truth.lock
 

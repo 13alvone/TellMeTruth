@@ -4,6 +4,10 @@ FROM python:3.10-slim
 # Set working directory
 WORKDIR /app
 
+# Default paths for Gmail OAuth files
+ENV GMAILTAIL_CREDENTIALS=/app/credentials.json \
+    GMAILTAIL_TOKEN=/app/token.json
+
 # Install system dependencies (ffmpeg is required)
 RUN apt-get update && apt-get install -y \
     ffmpeg \
